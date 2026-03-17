@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>猜猜我想说什么</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:"PingFang SC","Hiragino Sans GB",system-ui,-apple-system,sans-serif;
+  min-height:100vh;
+  background:linear-gradient(135deg,#e8d5f5 0%,#f5d5e0 30%,#fce4ec 60%,#e8d5f5 100%);
+  background-size:400% 400%;
+  animation:gradientShift 12s ease infinite;
+  display:flex;justify-content:center;overflow-x:hidden;
+}
+@keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+#particles-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.app-container{position:relative;z-index:1;width:100%;max-width:420px;padding:20px 16px 40px}
+.app-header{text-align:center;padding:30px 0 10px}
+.app-title{
+  font-size:28px;font-weight:700;
+  background:linear-gradient(135deg,#9c27b0,#e91e63,#9c27b0);
+  background-size:200% 200%;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;animation:titleShimmer 3s ease infinite;letter-spacing:2px;
+}
+@keyframes titleShimmer{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.app-subtitle{font-size:13px;color:#b07cc3;margin-top:6px;letter-spacing:4px}
+.tabs{display:flex;margin:24px 0 20px;background:rgba(255,255,255,0.4);border-radius:16px;padding:4px;backdrop-filter:blur(10px)}
+.tab-btn{flex:1;padding:12px 0;border:none;background:transparent;font-size:15px;font-weight:600;color:#a080b0;border-radius:13px;cursor:pointer;transition:all 0.35s;font-family:inherit;letter-spacing:1px}
+.tab-btn.active{background:rgba(255,255,255,0.9);color:#7b1fa2;box-shadow:0 4px 15px rgba(156,39,176,0.15)}
+.tab-btn .tab-icon{font-size:18px;display:block;margin-bottom:2px}
+.tab-panel{display:none}
+.tab-panel.active{display:block;animation:fadeInUp 0.4s ease}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
+.card{background:rgba(255,255,255,0.75);backdrop-filter:blur(20px);border-radius:20px;padding:24px 20px;margin-bottom:16px;box-shadow:0 8px 32px rgba(156,39,176,0.08);border:1px solid rgba(255,255,255,0.6)}
+.card-title{font-size:14px;font-weight:600;color:#9c27b0;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.card-title .icon{font-size:18px}
+.upload-area{border:2px dashed #d1a3e0;border-radius:16px;padding:32px 20px;text-align:center;cursor:pointer;transition:all 0.3s;background:rgba(232,213,245,0.2)}
+.upload-area:hover{border-color:#9c27b0;background:rgba(232,213,245,0.35)}
+.upload-area.has-image{padding:12px;border-style:solid;border-color:#ce93d8}
+.upload-area .upload-icon{font-size:42px;display:block;margin-bottom:8px}
+.upload-area .upload-text{font-size:14px;color:#9c27b0;font-weight:500}
+.upload-area .upload-hint{font-size:11px;color:#b39dba;margin-top:4px}
+.upload-area img{max-width:100%;max-height:200px;border-radius:10px}
+.upload-area .change-hint{font-size:11px;color:#b39dba;margin-top:8px}
+textarea{width:100%;min-height:90px;border:2px solid #e8d5f5;border-radius:14px;padding:14px 16px;font-size:14px;font-family:inherit;resize:vertical;outline:none;transition:border-color 0.3s;background:rgba(255,255,255,0.6);color:#4a3050}
+textarea:focus{border-color:#ce93d8}
+textarea::placeholder{color:#c0a0cc}
+input[type="text"],input[type="number"],input[type="password"],input[type="tel"]{width:100%;border:2px solid #e8d5f5;border-radius:12px;padding:12px 16px;font-size:14px;font-family:inherit;outline:none;transition:border-color 0.3s;background:rgba(255,255,255,0.6);color:#4a3050}
+input:focus{border-color:#ce93d8}
+input::placeholder{color:#c0a0cc}
+
+/* Secret type & password mode selectors */
+.type-modes,.pwd-modes{display:flex;gap:8px;margin-bottom:14px}
+.type-mode-btn,.pwd-mode-btn{flex:1;padding:10px 6px;border:2px solid #e8d5f5;border-radius:12px;background:rgba(255,255,255,0.4);cursor:pointer;text-align:center;transition:all 0.3s;font-family:inherit}
+.type-mode-btn:hover,.pwd-mode-btn:hover{border-color:#ce93d8}
+.type-mode-btn.active,.pwd-mode-btn.active{border-color:#9c27b0;background:rgba(156,39,176,0.08)}
+.type-mode-btn .mode-icon,.pwd-mode-btn .mode-icon{font-size:22px;display:block;margin-bottom:3px}
+.type-mode-btn .mode-label,.pwd-mode-btn .mode-label{font-size:11px;color:#7b1fa2;font-weight:600}
+
+.secret-area,.pwd-input-area{display:none}
+.secret-area.active,.pwd-input-area.active{display:block;animation:fadeInUp 0.3s ease}
+.input-group{margin-bottom:10px}
+.input-label{font-size:12px;color:#9c78a8;margin-bottom:6px;font-weight:500}
+
+/* Recording UI */
+.rec-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px 0}
+.rec-status{font-size:13px;color:#9c78a8;display:flex;align-items:center;gap:6px}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:#ccc;transition:background 0.3s}
+.rec-dot.live{background:#f44336;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{transform:scale(0.9);opacity:0.8}50%{transform:scale(1.15);opacity:1}}
+.rec-btns{display:flex;gap:10px}
+.btn-rec{padding:12px 22px;border-radius:25px;font-size:14px;font-weight:600;font-family:inherit;color:#fff;border:none;cursor:pointer;transition:all 0.3s;background:linear-gradient(135deg,#f44336,#ff5722);box-shadow:0 4px 15px rgba(255,87,34,0.35)}
+.btn-rec:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,87,34,0.5)}
+.btn-rec:disabled{opacity:0.45;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-stop{padding:12px 22px;border-radius:25px;font-size:14px;font-weight:600;font-family:inherit;color:#fff;border:none;cursor:pointer;transition:all 0.3s;background:#9c27b0;box-shadow:0 4px 15px rgba(123,31,162,0.35)}
+.btn-stop:hover{transform:translateY(-1px)}
+.btn-stop:disabled{opacity:0.45;cursor:not-allowed;transform:none;box-shadow:none}
+.rec-preview{width:100%;margin-top:6px}
+.rec-preview audio{width:100%;border-radius:8px;outline:none}
+
+.btn-primary{width:100%;padding:16px;border:none;border-radius:16px;font-size:16px;font-weight:700;font-family:inherit;color:white;background:linear-gradient(135deg,#ab47bc,#ec407a);cursor:pointer;transition:all 0.3s;box-shadow:0 6px 20px rgba(171,71,188,0.35);letter-spacing:2px;position:relative;overflow:hidden}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(171,71,188,0.45)}
+.btn-primary:active{transform:translateY(0)}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.btn-primary .btn-sparkle{position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);animation:sparkle 2.5s ease infinite}
+@keyframes sparkle{0%{left:-100%}50%,100%{left:100%}}
+.btn-row{display:flex;gap:10px;margin-top:14px}
+.btn-secondary{flex:1;padding:12px;border:2px solid #d1a3e0;border-radius:12px;background:rgba(255,255,255,0.5);font-size:13px;font-weight:600;font-family:inherit;color:#7b1fa2;cursor:pointer;transition:all 0.3s}
+.btn-secondary:hover{background:rgba(255,255,255,0.8);border-color:#ab47bc}
+.result-area{display:none;text-align:center}
+.result-area.show{display:block;animation:fadeInUp 0.5s ease}
+.result-image-wrapper{position:relative;display:inline-block;margin:10px 0}
+.result-image-wrapper img{max-width:100%;max-height:260px;border-radius:14px;box-shadow:0 8px 30px rgba(156,39,176,0.15)}
+.result-badge{position:absolute;top:-10px;right:-10px;background:linear-gradient(135deg,#ab47bc,#ec407a);color:white;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;box-shadow:0 3px 10px rgba(171,71,188,0.4)}
+.result-success-text{font-size:14px;color:#7b1fa2;margin:8px 0 4px;font-weight:500}
+.decoded-message{background:rgba(255,255,255,0.7);border-radius:14px;padding:20px;margin:14px 0;border:2px solid #ce93d8;position:relative}
+.decoded-message .quote-mark{font-size:36px;color:#d1a3e0;line-height:1;position:absolute;top:8px;left:14px}
+.decoded-message .message-text{font-size:16px;color:#4a3050;line-height:1.7;padding-top:10px;word-break:break-all}
+.decoded-audio{background:rgba(255,255,255,0.7);border-radius:14px;padding:20px;margin:14px 0;border:2px solid #ce93d8;text-align:center}
+.decoded-audio audio{width:100%;margin-top:10px;border-radius:8px;outline:none}
+.toast{position:fixed;top:30px;left:50%;transform:translateX(-50%) translateY(-100px);background:rgba(123,31,162,0.92);color:white;padding:12px 24px;border-radius:12px;font-size:13px;font-weight:500;z-index:1000;transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);backdrop-filter:blur(10px);max-width:350px;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.error{background:rgba(211,47,47,0.92)}
+@keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-4px)}20%,40%,60%,80%{transform:translateX(4px)}}
+.shake{animation:shake 0.5s ease}
+.loading-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(232,213,245,0.6);backdrop-filter:blur(8px);z-index:999;justify-content:center;align-items:center;flex-direction:column}
+.loading-overlay.show{display:flex}
+.loading-spinner{width:50px;height:50px;border:4px solid #e8d5f5;border-top-color:#9c27b0;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{margin-top:14px;font-size:14px;color:#7b1fa2;font-weight:600;letter-spacing:2px}
+.char-counter{text-align:right;font-size:11px;color:#b39dba;margin-top:4px}
+.info-box{background:rgba(232,213,245,0.3);border-radius:10px;padding:10px 14px;font-size:11px;color:#9c78a8;line-height:1.6;margin-top:12px}
+.decode-pwd-area{display:none}
+.decode-pwd-area.show{display:block;animation:fadeInUp 0.4s ease}
+.question-display{background:rgba(156,39,176,0.06);border-radius:12px;padding:14px 16px;margin-bottom:12px;text-align:center}
+.question-display .q-label{font-size:11px;color:#b39dba;margin-bottom:4px}
+.question-display .q-text{font-size:15px;color:#7b1fa2;font-weight:600}
+.image-info{display:flex;align-items:center;gap:8px;font-size:12px;color:#9c78a8;margin-top:8px;justify-content:center}
+.capacity-warning{color:#d32f2f;font-size:12px;margin-top:6px;display:none}
+.app-footer{text-align:center;padding:30px 0 10px;font-size:11px;color:#c0a0cc;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<canvas id="particles-canvas"></canvas>
+
+<div class="app-container">
+  <header class="app-header">
+    <div class="app-title">猜猜我想说什么</div>
+    <div class="app-subtitle">✦ 图中藏话 · 画里传情 ✦</div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('encode')"><span class="tab-icon">🔮</span>藏秘密</button>
+    <button class="tab-btn" onclick="switchTab('decode')"><span class="tab-icon">🔍</span>解秘密</button>
+  </div>
+
+  <!-- ===== ENCODE ===== -->
+  <div id="panel-encode" class="tab-panel active">
+    <div id="encode-form">
+
+      <div class="card">
+        <div class="card-title"><span class="icon">🖼️</span> 选择一张图片</div>
+        <div class="upload-area" id="encode-upload" onclick="document.getElementById('encode-file').click()">
+          <span class="upload-icon">📷</span>
+          <div class="upload-text">点击上传 PNG 图片</div>
+          <div class="upload-hint">图片像素越多，能藏的秘密越多</div>
+        </div>
+        <input type="file" id="encode-file" accept="image/png" style="display:none" onchange="handleEncodeFile(this)">
+        <div class="image-info" id="encode-image-info" style="display:none"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">💬</span> 选择秘密类型</div>
+        <div class="type-modes">
+          <div class="type-mode-btn active" id="stype-text" onclick="switchSecretType('text')">
+            <span class="mode-icon">📝</span><span class="mode-label">文字</span>
+          </div>
+          <div class="type-mode-btn" id="stype-voice" onclick="switchSecretType('voice')">
+            <span class="mode-icon">🎤</span><span class="mode-label">语音</span>
+          </div>
+        </div>
+
+        <div class="secret-area active" id="secret-text-area">
+          <textarea id="secret-text" placeholder="写下你想藏进图片里的话…" maxlength="5000" oninput="updateCharCount()"></textarea>
+          <div class="char-counter" id="char-counter">0 / 5000</div>
+        </div>
+
+        <div class="secret-area" id="secret-voice-area">
+          <div class="rec-wrap">
+            <div class="rec-status">
+              <div class="rec-dot" id="rec-dot"></div>
+              <span id="rec-status-text">点击下方按钮开始录音</span>
+            </div>
+            <div class="rec-btns">
+              <button class="btn-rec" id="btn-rec" onclick="startRecording()">🎤 开始录音</button>
+              <button class="btn-stop" id="btn-stop" onclick="stopRecording()" disabled>⏹ 停止</button>
+            </div>
+            <div class="rec-preview" id="rec-preview" style="display:none">
+              <audio controls id="rec-audio"></audio>
+            </div>
+          </div>
+          <div class="info-box" style="margin-top:8px">
+            💡 语音以压缩格式录制，建议控制在3-5秒内，图片越大能藏的语音越长。
+          </div>
+        </div>
+
+        <div class="capacity-warning" id="capacity-warning"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">🔑</span> 设置密码</div>
+        <div class="pwd-modes">
+          <div class="pwd-mode-btn active" onclick="switchPwdMode('text')" id="mode-text">
+            <span class="mode-icon">📝</span><span class="mode-label">文字密码</span>
+          </div>
+          <div class="pwd-mode-btn" onclick="switchPwdMode('qa')" id="mode-qa">
+            <span class="mode-icon">❓</span><span class="mode-label">问答密码</span>
+          </div>
+          <div class="pwd-mode-btn" onclick="switchPwdMode('num')" id="mode-num">
+            <span class="mode-icon">🔢</span><span class="mode-label">数字密码</span>
+          </div>
+        </div>
+        <div class="pwd-input-area active" id="pwd-text">
+          <div class="input-group"><div class="input-label">输入文字密码</div>
+            <input type="text" id="pwd-text-input" placeholder="对方需输入同样的密码"></div>
+        </div>
+        <div class="pwd-input-area" id="pwd-qa">
+          <div class="input-group"><div class="input-label">设一个问题</div>
+            <input type="text" id="pwd-qa-question" placeholder="例如：我们第一次见面在哪里？" maxlength="100"></div>
+          <div class="input-group"><div class="input-label">写下答案（作为密码）</div>
+            <input type="text" id="pwd-qa-answer" placeholder="输入答案"></div>
+        </div>
+        <div class="pwd-input-area" id="pwd-num">
+          <div class="input-group"><div class="input-label">输入4-8位数字密码</div>
+            <input type="tel" id="pwd-num-input" placeholder="例如：5201314" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="doEncode()">
+        <span class="btn-sparkle"></span>✨ 隐入图片 ✨
+      </button>
+      <div class="info-box">💡 秘密以肉眼不可见的方式写入像素，只有知道密码的人才能读取。保存时请选 PNG 格式！</div>
+    </div>
+
+    <div class="result-area" id="encode-result">
+      <div class="card" style="text-align:center">
+        <div style="font-size:36px;margin-bottom:8px">🎉</div>
+        <div class="result-success-text">秘密已经藏好啦！</div>
+        <div style="font-size:12px;color:#b39dba;margin-bottom:14px">看起来和原图一模一样</div>
+        <div class="result-image-wrapper">
+          <img id="result-image" src="">
+          <div class="result-badge">藏有秘密 ✦</div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="saveResultImage()">💾 保存图片</button>
+          <button class="btn-secondary" onclick="resetEncode()">🔄 再来一张</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DECODE ===== -->
+  <div id="panel-decode" class="tab-panel">
+    <div id="decode-form">
+      <div class="card">
+        <div class="card-title"><span class="icon">🖼️</span> 上传藏了秘密的图片</div>
+        <div class="upload-area" id="decode-upload" onclick="document.getElementById('decode-file').click()">
+          <span class="upload-icon">🔍</span>
+          <div class="upload-text">点击上传 PNG 图片</div>
+          <div class="upload-hint">上传一张藏有秘密的图片</div>
+        </div>
+        <input type="file" id="decode-file" accept="image/png" style="display:none" onchange="handleDecodeFile(this)">
+      </div>
+      <div class="decode-pwd-area" id="decode-pwd-area">
+        <div class="card" id="decode-pwd-card">
+          <div class="card-title"><span class="icon">🔓</span> 输入密码</div>
+          <div id="decode-pwd-content"></div>
+          <div style="margin-top:14px">
+            <button class="btn-primary" onclick="doDecode()">
+              <span class="btn-sparkle"></span>✨ 揭开秘密 ✨
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="result-area" id="decode-result"></div>
+  </div>
+
+  <footer class="app-footer">✦ 你的秘密 只在像素之间 ✦</footer>
+</div>
+
+<div class="loading-overlay" id="loading">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">正在处理…</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== PARTICLES ===== */
+(function(){
+  var cv=document.getElementById('particles-canvas'),ctx=cv.getContext('2d'),ps=[];
+  function rz(){cv.width=innerWidth;cv.height=innerHeight}
+  addEventListener('resize',rz);rz();
+  function P(){this.r()}
+  P.prototype.r=function(){this.x=Math.random()*cv.width;this.y=Math.random()*cv.height;this.s=Math.random()*3+1;this.vx=(Math.random()-.5)*.4;this.vy=(Math.random()-.5)*.4;this.o=Math.random()*.4+.1;this.h=Math.random()>.5?290:330};
+  P.prototype.u=function(){this.x+=this.vx;this.y+=this.vy;this.o+=Math.sin(Date.now()*.001+this.x)*.003;if(this.x<-10||this.x>cv.width+10||this.y<-10||this.y>cv.height+10)this.r()};
+  P.prototype.d=function(){ctx.beginPath();ctx.arc(this.x,this.y,this.s,0,Math.PI*2);ctx.fillStyle='hsla('+this.h+',60%,75%,'+Math.max(0,this.o)+')';ctx.fill();ctx.beginPath();ctx.arc(this.x,this.y,this.s*2.5,0,Math.PI*2);ctx.fillStyle='hsla('+this.h+',60%,80%,'+Math.max(0,this.o*.2)+')';ctx.fill()};
+  for(var i=0;i<35;i++)ps.push(new P());
+  (function anim(){ctx.clearRect(0,0,cv.width,cv.height);for(var i=0;i<ps.length;i++){ps[i].u();ps[i].d()}requestAnimationFrame(anim)})();
+})();
+
+/* ===== STATE ===== */
+var encodeImageData=null;
+var currentSecretType='text';
+var currentPwdMode='text';
+var mediaRecorder=null;
+var audioChunks=[];
+var recordedBlob=null;
+var recordedBuffer=null;
+var isRecording=false;
+var decodePayload=null;
+
+/* ===== HELPERS ===== */
+function showToast(msg,isErr){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='toast'+(isErr?' error':'');
+  void t.offsetWidth;
+  t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show')},2500);
+}
+function showLoading(text){document.getElementById('loading-text').textContent=text||'处理中…';document.getElementById('loading').classList.add('show')}
+function hideLoading(){document.getElementById('loading').classList.remove('show')}
+function escapeHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function formatBytes(b){if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'KB';return(b/1048576).toFixed(1)+'MB'}
+
+/* ===== TAB / MODE SWITCHING ===== */
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(function(b,i){b.classList.toggle('active',(i===0&&tab==='encode')||(i===1&&tab==='decode'))});
+  document.getElementById('panel-encode').classList.toggle('active',tab==='encode');
+  document.getElementById('panel-decode').classList.toggle('active',tab==='decode');
+}
+
+function switchSecretType(type){
+  currentSecretType=type;
+  document.getElementById('stype-text').classList.toggle('active',type==='text');
+  document.getElementById('stype-voice').classList.toggle('active',type==='voice');
+  document.getElementById('secret-text-area').classList.toggle('active',type==='text');
+  document.getElementById('secret-voice-area').classList.toggle('active',type==='voice');
+}
+
+function switchPwdMode(mode){
+  currentPwdMode=mode;
+  ['text','qa','num'].forEach(function(m){
+    document.getElementById('mode-'+m).classList.toggle('active',m===mode);
+    document.getElementById('pwd-'+m).classList.toggle('active',m===mode);
+  });
+}
+
+function updateCharCount(){
+  var n=document.getElementById('secret-text').value.length;
+  document.getElementById('char-counter').textContent=n+' / 5000';
+}
+
+/* ===== FILE UPLOAD ===== */
+function handleEncodeFile(input){
+  var file=input.files[0];
+  if(!file)return;
+  if(!file.type.includes('png')){showToast('请选择 PNG 格式图片',true);input.value='';return}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+      c.getContext('2d').drawImage(img,0,0);
+      encodeImageData={canvas:c,width:img.width,height:img.height};
+      var area=document.getElementById('encode-upload');
+      area.classList.add('has-image');
+      area.innerHTML='<img src="'+e.target.result+'"><div class="change-hint">点击更换图片</div>';
+      var info=document.getElementById('encode-image-info');
+      info.style.display='flex';
+      var av=Math.floor((img.width*img.height-200)*3/8);
+      info.innerHTML='📐 '+img.width+'×'+img.height+' | 💾 约可藏 '+formatBytes(av);
+    };
+    img.onerror=function(){showToast('无法加载图片',true);input.value=''};
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleDecodeFile(input){
+  var file=input.files[0];
+  if(!file)return;
+  if(!file.type.includes('png')){showToast('请选择 PNG 格式图片',true);input.value='';return}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+      c.getContext('2d').drawImage(img,0,0);
+      var area=document.getElementById('decode-upload');
+      area.classList.add('has-image');
+      area.innerHTML='<img src="'+e.target.result+'"><div class="change-hint">点击更换图片</div>';
+      tryReadHeader(c);
+    };
+    img.onerror=function(){showToast('无法加载图片',true)};
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ===== RECORDING ===== */
+function startRecording(){
+  if(isRecording)return;
+  recordedBlob=null;
+  recordedBuffer=null;
+  audioChunks=[];
+  document.getElementById('rec-preview').style.display='none';
+
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    var mime='audio/webm;codecs=opus';
+    if(!MediaRecorder.isTypeSupported(mime)){mime='audio/webm';if(!MediaRecorder.isTypeSupported(mime))mime=''}
+    mediaRecorder=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
+    mediaRecorder.ondataavailable=function(e){if(e.data.size>0)audioChunks.push(e.data)};
+    mediaRecorder.onstop=function(){
+      stream.getTracks().forEach(function(t){t.stop()});
+      if(!audioChunks.length){showToast('录音无数据',true);resetRecUI();return}
+      recordedBlob=new Blob(audioChunks,{type:mediaRecorder.mimeType||'audio/webm'});
+      recordedBlob.arrayBuffer().then(function(buf){
+        recordedBuffer=buf;
+        isRecording=false;
+        document.getElementById('rec-audio').src=URL.createObjectURL(recordedBlob);
+        document.getElementById('rec-preview').style.display='block';
+        document.getElementById('rec-dot').classList.remove('live');
+        document.getElementById('rec-status-text').textContent='录音完成 ('+formatBytes(recordedBlob.size)+')';
+        document.getElementById('btn-rec').innerHTML='🎤 重新录音';
+        document.getElementById('btn-rec').disabled=false;
+        document.getElementById('btn-stop').disabled=true;
+      });
+    };
+    mediaRecorder.start(100);
+    isRecording=true;
+    document.getElementById('rec-dot').classList.add('live');
+    document.getElementById('rec-status-text').textContent='正在录音…';
+    document.getElementById('btn-rec').disabled=true;
+    document.getElementById('btn-stop').disabled=false;
+  }).catch(function(err){
+    console.error(err);
+    showToast('无法访问麦克风，请检查权限',true);
+  });
+}
+
+function stopRecording(){
+  if(!isRecording||!mediaRecorder)return;
+  mediaRecorder.stop();
+}
+
+function resetRecUI(){
+  isRecording=false;
+  document.getElementById('rec-dot').classList.remove('live');
+  document.getElementById('rec-status-text').textContent='点击下方按钮开始录音';
+  document.getElementById('btn-rec').innerHTML='🎤 开始录音';
+  document.getElementById('btn-rec').disabled=false;
+  document.getElementById('btn-stop').disabled=true;
+  document.getElementById('rec-preview').style.display='none';
+}
+
+/* ===== CRYPTO ===== */
+var MAGIC=new TextEncoder().encode('STEG2024');
+
+function simpleHash(str){
+  var hash=0;var s=str+'::secret_salt_2024';
+  for(var i=0;i<s.length;i++){hash=((hash<<5)-hash+s.charCodeAt(i))|0}
+  return(hash>>>0).toString(16).padStart(8,'0');
+}
+
+function xorCrypt(data,password){
+  var pwdBytes=new TextEncoder().encode(password);
+  var d=data instanceof Uint8Array?data:new Uint8Array(data);
+  var r=new Uint8Array(d.length);
+  for(var i=0;i<d.length;i++)r[i]=d[i]^pwdBytes[i%pwdBytes.length];
+  return r;
+}
+
+/* ===== LSB HEADER =====
+  Magic(8) + PayloadLen(4) + DataType(1: 0=text,1=audio) + PwdMode(1: 0=text,1=qa,2=num)
+  + Hash(8) + MimeLen(2) + MimeBytes + QLen(2) + QBytes
+*/
+function buildHeader(payloadLen,dataType,pwdMode,hash,mimeBytes,questionBytes){
+  var ml=mimeBytes?mimeBytes.length:0;
+  var ql=questionBytes?questionBytes.length:0;
+  var tot=8+4+1+1+8+2+ml+2+ql;
+  var h=new Uint8Array(tot);var o=0;
+  h.set(MAGIC,o);o+=8;
+  h[o++]=(payloadLen>>>24)&0xFF;h[o++]=(payloadLen>>>16)&0xFF;h[o++]=(payloadLen>>>8)&0xFF;h[o++]=payloadLen&0xFF;
+  h[o++]=dataType;
+  var pm={text:0,qa:1,num:2};h[o++]=pm[pwdMode]||0;
+  var hb=new TextEncoder().encode(hash.slice(0,8).padEnd(8,'0'));h.set(hb,o);o+=8;
+  h[o++]=(ml>>>8)&0xFF;h[o++]=ml&0xFF;
+  if(mimeBytes&&ml>0){h.set(mimeBytes,o);o+=ml}
+  h[o++]=(ql>>>8)&0xFF;h[o++]=ql&0xFF;
+  if(questionBytes&&ql>0){h.set(questionBytes,o);o+=ql}
+  return h;
+}
+
+/* ===== LSB WRITE ===== */
+function writeToImage(canvas,header,payload){
+  var ctx=canvas.getContext('2d');
+  var id=ctx.getImageData(0,0,canvas.width,canvas.height);
+  var px=id.data;var tot=canvas.width*canvas.height;
+  var hBits=[];
+  for(var i=0;i<header.length;i++)for(var b=7;b>=0;b--)hBits.push((header[i]>>b)&1);
+  var pBits=[];
+  for(var i=0;i<payload.length;i++)for(var b=7;b>=0;b--)pBits.push((payload[i]>>b)&1);
+  if(pBits.length>(tot-hBits.length)*3)return false;
+  for(var i=0;i<hBits.length;i++){var idx=i*4;px[idx]=(px[idx]&0xFE)|hBits[i]}
+  var bi=0;
+  for(var p=hBits.length;p<tot&&bi<pBits.length;p++){
+    var base=p*4;
+    if(bi<pBits.length){px[base]=(px[base]&0xFE)|pBits[bi++]}
+    if(bi<pBits.length){px[base+1]=(px[base+1]&0xFE)|pBits[bi++]}
+    if(bi<pBits.length){px[base+2]=(px[base+2]&0xFE)|pBits[bi++]}
+  }
+  ctx.putImageData(id,0,0);
+  return true;
+}
+
+/* ===== LSB READ ===== */
+function readFromImage(canvas){
+  var ctx=canvas.getContext('2d');
+  var id=ctx.getImageData(0,0,canvas.width,canvas.height);
+  var px=id.data;var tot=canvas.width*canvas.height;
+
+  function rBits(sp){
+    var bits=[];
+    for(var i=0;i<nb;i++){var pi=sp+i;if(pi>=tot)return null;bits.push(px[pi*4]&1)}
+    return bits;
+  }
+  function b2B(bits){
+    var bs=new Uint8Array(Math.ceil(bits.length/8));
+    for(var i=0;i<bs.length;i++){var v=0;for(var b=0;b<8;b++){if(i*8+b<bits.length)v|=(bits[i*8+b]<<(7-b))}bs[i]=v}
+    return bs;
+  }
+
+  var hp=0;
+  var mgB=rBits(hp,64);if(!mgB)return null;hp+=64;
+  if(new TextDecoder().decode(b2B(mgB))!=='STEG2024')return null;
+
+  var plB=rBits(hp,32);if(!plB)return null;hp+=32;
+  var plb=b2B(plB);var pLen=(plb[0]<<24)|(plb[1]<<16)|(plb[2]<<8)|plb[3];
+
+  var dtB=rBits(hp,8);if(!dtB)return null;hp+=8;var dataType=b2B(dtB)[0];
+
+  var pmB=rBits(hp,8);if(!pmB)return null;hp+=8;
+  var pmn=b2B(pmB)[0];var pwdMd=['text','qa','num'][pmn]||'text';
+
+  var haB=rBits(hp,64);if(!haB)return null;hp+=64;
+  var hash=new TextDecoder().decode(b2B(haB));
+
+  var mlB=rBits(hp,16);if(!mlB)return null;hp+=16;
+  var mlb=b2B(mlB);var mLen=(mlb[0]<<8)|mlb[1];
+  var mime='';
+  if(mLen>0){var miB=rBits(hp,mLen*8);if(!miB)return null;hp+=mLen*8;mime=new TextDecoder().decode(b2B(miB))}
+
+  var qlB=rBits(hp,16);if(!qlB)return null;hp+=16;
+  var qlb=b2B(qlB);var qLen=(qlb[0]<<8)|qlb[1];
+  var question='';
+  if(qLen>0){var quB=rBits(hp,qLen*8);if(!quB)return null;hp+=qLen*8;question=new TextDecoder().decode(b2B(quB))}
+
+  var need=pLen*8;var bits=[];var cp=hp;
+  while(bits.length<need&&cp<tot){
+    var base=cp*4;
+    if(bits.length<need)bits.push(px[base]&1);
+    if(bits.length<need)bits.push(px[base+1]&1);
+    if(bits.length<need)bits.push(px[base+2]&1);
+    cp++;
+  }
+  if(bits.length<need)return null;
+
+  return{pLen:pLen,dataType:dataType,pwdMd:pwdMd,hash:hash,mime:mime,question:question,payload:b2B(bits)};
+}
+
+/* ===== ENCODE ACTION ===== */
+function doEncode(){
+  if(!encodeImageData){showToast('请先上传 PNG 图片',true);return}
+
+  var password='',question='';
+  if(currentPwdMode==='text'){password=document.getElementById('pwd-text-input').value;if(!password){showToast('请输入文字密码',true);return}}
+  else if(currentPwdMode==='qa'){question=document.getElementById('pwd-qa-question').value.trim();password=document.getElementById('pwd-qa-answer').value.trim();if(!question||!password){showToast('请完整输入问答',true);return}}
+  else if(currentPwdMode==='num'){password=document.getElementById('pwd-num-input').value;if(!password||password.length<4){showToast('请输入4-8位数字密码',true);return}}
+
+  var rawBytes,dataType,mimeStr='';
+  if(currentSecretType==='text'){
+    var txt=document.getElementById('secret-text').value.trim();
+    if(!txt){showToast('请输入秘密文字',true);return}
+    rawBytes=new TextEncoder().encode(txt);dataType=0;
+  }else{
+    if(!recordedBuffer||!recordedBuffer.byteLength){showToast('请先录制语音',true);return}
+    rawBytes=new Uint8Array(recordedBuffer);dataType=1;
+    mimeStr=recordedBlob?recordedBlob.type:'audio/webm';
+  }
+
+  var hash=simpleHash(password);
+  var encrypted=xorCrypt(rawBytes,password);
+  var mimeBytes=mimeStr?new TextEncoder().encode(mimeStr):null;
+  var questionBytes=question?new TextEncoder().encode(question):null;
+  var header=buildHeader(encrypted.length,dataType,currentPwdMode,hash,mimeBytes,questionBytes);
+
+  showLoading('正在将秘密藏入图片…');
+  setTimeout(function(){
+    try{
+      var oc=document.createElement('canvas');oc.width=encodeImageData.width;oc.height=encodeImageData.height;
+      oc.getContext('2d').drawImage(encodeImageData.canvas,0,0);
+      if(!writeToImage(oc,header,encrypted)){hideLoading();showToast('图片容量不足，请换更大的图片',true);return}
+      document.getElementById('result-image').src=oc.toDataURL('image/png');
+      document.getElementById('encode-form').style.display='none';
+      document.getElementById('encode-result').classList.add('show');
+      hideLoading();showToast('✨ 秘密已藏入图片！');
+    }catch(e){hideLoading();showToast('加密失败：'+e.message,true);console.error(e)}
+  },300);
+}
+
+function saveResultImage(){
+  var a=document.createElement('a');
+  a.download='secret_'+Date.now()+'.png';
+  a.href=document.getElementById('result-image').src;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  showToast('💾 图片已保存到下载目录');
+}
+
+function resetEncode(){
+  document.getElementById('encode-form').style.display='block';
+  document.getElementById('encode-result').classList.remove('show');
+  document.getElementById('secret-text').value='';
+  document.getElementById('pwd-text-input').value='';
+  document.getElementById('pwd-qa-question').value='';
+  document.getElementById('pwd-qa-answer').value='';
+  document.getElementById('pwd-num-input').value='';
+  document.getElementById('char-counter').textContent='0 / 5000';
+  document.getElementById('capacity-warning').style.display='none';
+  var area=document.getElementById('encode-upload');
+  area.classList.remove('has-image');
+  area.innerHTML='<span class="upload-icon">📷</span><div class="upload-text">点击上传 PNG 图片</div><div class="upload-hint">图片像素越多，能藏的秘密越多</div>';
+  document.getElementById('encode-image-info').style.display='none';
+  document.getElementById('encode-file').value='';
+  encodeImageData=null;
+  recordedBlob=null;recordedBuffer=null;
+  resetRecUI();
+  switchSecretType('text');switchPwdMode('text');
+}
+
+/* ===== DECODE ACTIONS ===== */
+function tryReadHeader(canvas){
+  showLoading('正在分析图片…');
+  setTimeout(function(){
+    try{
+      var r=readFromImage(canvas);
+      if(!r){showToast('这张图片没有藏秘密哦',true);document.getElementById('decode-pwd-area').classList.remove('show');hideLoading();return}
+      decodePayload=r;
+      var cnt=document.getElementById('decode-pwd-content');
+      var h='';
+      var typeLabel=r.dataType===1?'🎵 这张图片藏了一段语音':'💌 这张图片藏了一段文字';
+      h+='<div style="text-align:center;margin-bottom:12px;font-size:13px;color:#9c78a8">'+typeLabel+'</div>';
+      if(r.pwdMd==='text'){
+        h+='<div class="input-group"><div class="input-label">请输入文字密码</div><input type="text" id="decode-pwd-input" placeholder="输入密码"></div>';
+      }else if(r.pwdMd==='qa'){
+        h+='<div class="question-display"><div class="q-label">TA 问了一个问题：</div><div class="q-text">'+escapeHtml(r.question)+'</div></div>';
+        h+='<div class="input-group"><div class="input-label">请输入答案</div><input type="text" id="decode-pwd-input" placeholder="输入答案"></div>';
+      }else if(r.pwdMd==='num'){
+        h+='<div class="input-group"><div class="input-label">请输入数字密码</div><input type="tel" id="decode-pwd-input" placeholder="输入数字密码" maxlength="8"></div>';
+      }
+      cnt.innerHTML=h;
+      document.getElementById('decode-pwd-area').classList.add('show');
+      var labels={text:'🔤 文字密码',qa:'❓ 问答密码',num:'🔢 数字密码'};
+      showToast('检测到秘密！密码类型：'+labels[r.pwdMd]);
+      hideLoading();
+    }catch(e){hideLoading();showToast('读取失败：'+e.message,true);console.error(e)}
+  },300);
+}
+
+function doDecode(){
+  if(!decodePayload){showToast('请先上传图片',true);return}
+  var inp=document.getElementById('decode-pwd-input');
+  if(!inp)return;
+  var pwd=inp.value.trim();
+  if(!pwd){showToast('请输入密码',true);inp.parentElement.classList.add('shake');setTimeout(function(){inp.parentElement.classList.remove('shake')},600);return}
+  if(simpleHash(pwd).slice(0,8)!==decodePayload.hash){
+    inp.value='';inp.focus();
+    inp.parentElement.classList.add('shake');
+    setTimeout(function(){inp.parentElement.classList.remove('shake')},600);
+    showToast('密码不正确，再想想～',true);return;
+  }
+  showLoading('正在解密秘密…');
+  setTimeout(function(){
+    try{
+      var dec=xorCrypt(decodePayload.payload,pwd);
+      var html='';
+      if(decodePayload.dataType===1){
+        var blob=new Blob([dec],{type:decodePayload.mime||'audio/webm'});
+        var url=URL.createObjectURL(blob);
+        html='<div class="card" style="text-align:center">'+
+          '<div style="font-size:42px;margin-bottom:8px">🎵</div>'+
+          '<div class="result-success-text">语音秘密揭开了！</div>'+
+          '<div style="font-size:12px;color:#b39dba;margin-bottom:14px">点击播放，听听 TA 想对你说什么</div>'+
+          '<div class="decoded-audio"><div style="font-size:48px;margin-bottom:10px">🔊</div>'+
+          '<audio controls autoplay src="'+url+'" style="width:100%;border-radius:8px"></audio></div>'+
+          '<div class="btn-row"><button class="btn-secondary" onclick="resetDecode()" style="flex:1">🔄 再猜一张</button></div></div>';
+      }else{
+        var txt=new TextDecoder().decode(dec);
+        html='<div class="card">'+
+          '<div style="font-size:42px;text-align:center;margin-bottom:8px">💌</div>'+
+          '<div class="result-success-text" style="text-align:center">秘密被你发现了！</div>'+
+          '<div class="decoded-message"><span class="quote-mark">"</span>'+
+          '<div class="message-text">'+escapeHtml(txt)+'</div></div>'+
+          '<div class="btn-row"><button class="btn-secondary" onclick="resetDecode()" style="flex:1">🔄 再猜一张</button></div></div>';
+      }
+      document.getElementById('decode-result').innerHTML=html;
+      document.getElementById('decode-form').style.display='none';
+      document.getElementById('decode-result').classList.add('show');
+      hideLoading();showToast('✨ 秘密已揭开！');
+    }catch(e){hideLoading();showToast('解密失败：'+e.message,true);console.error(e)}
+  },300);
+}
+
+function resetDecode(){
+  document.getElementById('decode-form').style.display='block';
+  document.getElementById('decode-result').classList.remove('show');
+  document.getElementById('decode-result').innerHTML='';
+  document.getElementById('decode-pwd-area').classList.remove('show');
+  document.getElementById('decode-pwd-content').innerHTML='';
+  var area=document.getElementById('decode-upload');
+  area.classList.remove('has-image');
+  area.innerHTML='<span class="upload-icon">🔍</span><div class="upload-text">点击上传 PNG 图片</div><div class="upload-hint">上传一张藏有秘密的图片</div>';
+  document.getElementById('decode-file').value='';
+  decodePayload=null;
+}
+</script>
+</body>
+</html>
